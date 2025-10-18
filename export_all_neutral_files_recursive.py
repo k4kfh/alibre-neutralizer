@@ -69,6 +69,13 @@ def main():
   assem = CurrentAssembly()
 
   #default_folder = 'c\\Users\\Joe Sacher\\OneDrive\\Alibre\\Spice Rack\\'
+  # TODO: Pick the default folder intelligently so you have a structure like:
+  # - ./L
+  # - ./P
+  # - ./STEPs
+  # - ./STLs
+  # ...etc
+  # Probably the best way to do this is check every folder in the path and see if there's a MyWidget.AD_PKG, where MyWidget is the name of the current assembly.
   default_folder = ''
 
   # construct list of items for the window
