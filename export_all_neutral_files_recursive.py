@@ -15,7 +15,17 @@ def exportComponent(component, target_folder, file_suffix = None):
   isolated_filename = isolateComponentName(component)
   if file_suffix == None:
     file_suffix = ""
-  export_path_absolute = target_folder + '\\' + isolated_filename + file_suffix
+  
+  export_path_absolute = None # Define this here, just so it's scoped appropriately
+
+  # For now, I want to hardcode in the part number to all the file names (unless the part number isn't set).
+  # The part number seems to default to the component name, or empty. So if it's either of those values, don't include it in the filename.
+  if (component.Number != "") and (component.Number != isolated_filename):
+    # We want to include the P/N (myThing.Number) in the file name
+    export_path_absolute = target_folder + '\\' + component.Number + "_" + isolated_filename + file_suffix
+  else:
+    # It doesn't appear P/N (myThing.Number) is set to a meaningful value, so let's don't include it in the file name
+    export_path_absolute = target_folder + '\\' + isolated_filename + file_suffix
   exportToSTEP(component, export_path_absolute)
 
 # Export a list of Parts into a given target folder, with an optional suffix applied to each file's name.
