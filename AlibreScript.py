@@ -1,3 +1,6 @@
+# Originally by @stephensmitchell, released under the MIT license
+# https://github.com/stephensmitchell/alibre-script/tree/master/Alibre-Script-Stub-Files
+
 # Package: API
 def CurrentPart():
     return Part

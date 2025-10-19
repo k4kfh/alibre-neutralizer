@@ -1,4 +1,4 @@
-# OSHW Export for Alibre
+# Alibre Neutralizer: Bulk-Exporter for Alibre Design
 
 ## What problem does this solve?
 
