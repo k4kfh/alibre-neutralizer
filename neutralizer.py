@@ -13,15 +13,17 @@ class ExportTypes:
     STL = 4
     IGES = 5
 
-    def get_file_extensions(self, export_type):
+    # Static utility method
+    @staticmethod
+    def get_file_extensions(export_type):
         """Given an integer representing an export file type, return a list of possible file extensions corresponding to that export file type."""
-        if (export_type == self.STEP203) or (export_type == self.STEP214):
+        if (export_type == ExportTypes.STEP203) or (export_type == ExportTypes.STEP214):
             return [".stp", ".step"]
-        elif (export_type == self.SAT):
+        elif (export_type == ExportTypes.SAT):
             return [".sat"]
-        elif (export_type == self.STL):
+        elif (export_type == ExportTypes.STL):
             return [".stl"]
-        elif (export_type == self.IGES):
+        elif (export_type == ExportTypes.IGES):
             return [".iges", ".igs"]
         else:
             raise Exception("Invalid export type provided.")
@@ -88,6 +90,8 @@ class ExportDirective:
             raise Exception("Expected a Part or Assembly, but did not receive one.")
         
         # At this point we can safely assume we have an Alibre Part/Assembly
+        # TODO: Create "sanitized" versions of each of these values.
+        # For example, Supplier_Sanitized = component.Supplier normally, but if component.Supplier is empty, it could equal "Undefined Supplier"
         path_unsanitized = os.path.normpath(
             self.export_rel_path_expression.format(
                 Comment = component.Comment,
@@ -185,12 +189,16 @@ class AlibreNeutralizer:
         # Note that we use absolute paths (e.g. C:\wherever\myThing.AD_PRT) over Alibre's .Name property, because .Name includes the instance ID (the "<37>" type thing) at the end, while the filename does not.
         # May need to change this in the future if we want to export directly from PDM instead of from a package, since FileName is None in PDM.
 
-        # Step 1: Export parts in root assembly, and add those parts to the exported_files list
+        # Step 1: Purge old files, if applicable
+        for edir in self.export_directives:
+            self._purge_according_to_export_directive(edir)
+
+        # Step 2: Export parts in root assembly, and add those parts to the exported_files list
         processed_files = processed_files.union(
             self._export_parts(self.root_component, self.export_directives, processed_files)
         )
 
-        # Step 2: Export subassemblies in root assembly (recursive)
+        # Step 3: Export subassemblies in root assembly (recursive)
         # for subassy in subassemblies
         #   for edir in export_directives
         #     newly_exported_names = _export_subassembly_recursive(component, edir)
@@ -265,10 +273,10 @@ class AlibreNeutralizer:
                         file_path = os.path.join(root, file)
                         try:
                             # TODO: uncomment to do it for realsies
-                            # os.remove(file_path)
-                            print "Deleted: {file_path}".format(file_path=file_path)
+                            os.remove(file_path)
+                            print "Pre-Export Purge: Deleted: {file_path}".format(file_path=file_path)
                         except OSError as e:
-                            print "Error deleting {file_path}: {e}".format(file_path=file_path, e=e)
+                            print "Pre-Export Purge: Error deleting {file_path}: {e}".format(file_path=file_path, e=e)
 
     def _execute_single_export_directive(self, component, export_directive):
         """Given a ``Part`` or ``Assembly``, execute one ``ExportDirective`` against it. This function does NOT perform any deduplication checking."""
@@ -326,6 +334,11 @@ class AlibreNeutralizer:
         """Given a Part or Assembly, export the specified file type to the specified absolute path."""
         # type: (AlibreNeutralizer, Part | Assembly, int, str) -> None
 
+        # Make sure the full directory tree exists. If it doesn't create it
+        export_directory = os.path.dirname(export_path_abs)
+        if not os.path.exists(export_directory):
+            os.makedirs(export_directory)
+        
         # TODO: Better error handling/logging than this.
         # This gets the job done for testing the path interpretations.
         try:
@@ -378,12 +391,11 @@ foo = AlibreNeutralizer(
     CurrentAssembly(),
     "../../../../", # This is the directory where the AD_PKG file is stored
     [
-        ExportDirective(ExportTypes.STEP203, "./STEPs/{Number}_{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
-        ExportDirective(ExportTypes.STL, "./STLs/{Number}_{Name}.stl")
+        ExportDirective(ExportTypes.STEP203, "./STEPs/{Number}_{Name}.stp", "./STEPs"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
+        ExportDirective(ExportTypes.STL, "./STLs/{Number}_{Name}.stl", "./STLs")
     ]
 )
 
 # Test export path generation
-foo._execute_single_export_directive(CurrentAssembly(), foo.export_directives[0])
 foo.export_all()
 
