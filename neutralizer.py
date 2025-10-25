@@ -13,12 +13,25 @@ class ExportTypes:
     STL = 4
     IGES = 5
 
+    def get_file_extensions(self, export_type):
+        """Given an integer representing an export file type, return a list of possible file extensions corresponding to that export file type."""
+        if (export_type == self.STEP203) or (export_type == self.STEP214):
+            return ["stp", "step"]
+        elif (export_type == self.SAT):
+            return ["sat"]
+        elif (export_type == self.STL):
+            return ["stl"]
+        elif (export_type == self.IGES):
+            return ["iges", "igs"]
+        else:
+            raise Exception("Invalid export type provided.")
+
 class ExportDirective:
     """Each instance of this directs AssemblyNeutralizer to export a particular type of file, with a particular relative path and filename.
     For example, a STEP214 export to ./whatever/relative/path/{FileName}_{Revision}.stp ."""
 
-    def __init__(self, export_type, export_rel_path_expression, export_root_assembly=True, export_subassemblies=True, export_parts=True):
-        # type: (ExportDirective, int, str, bool, bool, bool) -> None
+    def __init__(self, export_type, export_rel_path_expression, purge_directory_before_export=None, export_root_assembly=True, export_subassemblies=True, export_parts=True):
+        # type: (ExportDirective, int, str, None | str, bool, bool, bool) -> None
         """
         Define a new Export Directive. You'll need one of these for each type of file you want to export.
 
@@ -28,6 +41,9 @@ class ExportDirective:
         :param export_rel_path_expression: Specify a formula for the relative path of each exported file, using Python string .format syntax.
         For example, ``./whatever/relative/path/{FileName}_{Revision}.stp``. Available variables are: TODO
         :type export_rel_path_expression: str
+
+        :param purge_directory_before_export: Set to a relative path that you'd like purged of your selected export type (.stp, .sat, etc) before exporting.
+        If set to None (the default), no files will be deleted before exporting new ones (although new files may overwrite old files).
 
         :param export_root_assembly: Set to False to skip exporting the root assembly with this Export Directive.
         :type export_root_assembly: bool
@@ -46,6 +62,9 @@ class ExportDirective:
         # TODO: Data validation
         self.export_rel_path_expression = export_rel_path_expression
 
+        # TODO: Data validation on the relative path syntax, if it's not set to None
+        self.purge_before_export = purge_directory_before_export
+
         # Store data on which types of components we should export
         self.export_root_assembly = export_root_assembly
         self.export_subassemblies = export_subassemblies
@@ -57,8 +76,18 @@ class ExportDirective:
         :type self: ExportDirective
 
         :param component: The component (Part or Assembly) whose export path you want to evaluate.
-        :type component: Assembly | Part | Subassembly
+        :type component: Assembly | Part | Subassembly | AssembledPart
         """
+        # A smidge of type enforcement
+        if not (
+            isinstance(component, Part)
+            or isinstance(component, AssembledPart)
+            or isinstance(component, AssembledSubAssembly)
+            or isinstance(component, Assembly)
+        ):
+            raise Exception("Expected a Part or Assembly, but did not receive one.")
+        
+        # At this point we can safely assume we have an Alibre Part/Assembly
         path = self.export_rel_path_expression.format(
             Comment = component.Comment,
             CostCenter = component.CostCenter,
@@ -95,7 +124,20 @@ class AlibreNeutralizer:
     """Create an instance of this, with an Alibre Assembly passed in, to handle the backend logic of recursively exporting files."""
 
     def __init__(self, component, base_path, export_directives = None):
-        # type: (AlibreNeutralizer, Assembly | Part, str, list[ExportDirective] | None) -> None
+        # type: (AlibreNeutralizer, Assembly | AssembledSubAssembly, str, list[ExportDirective] | None) -> None
+        """Create and configure an instance of AlibreNeutralizer, the top-level class for managing bulk exports.
+        
+        :type self: AlibreNeutralizer
+
+        :param component: The top-level assembly that you want to recursively export.
+        :type component: Assembly | AssembledSubAssembly
+
+        :param base_path: The base directory in which to store exports. This should be a relative path, relative to the location of ``component`` on the filesystem.
+        In the unlikely event that your use case requires it, you can make this an absolute path, although it is generally not recommended.
+
+        :param export_directives: A list of ExportDirectives defining the types of exports you want to make, how the files should be named/organized, and other parameters.
+        You can add additional ExportDirectives after creating the class.
+        """
 
         # Store the root assembly or part, our main connection point to Alibre
         if isinstance(component, Assembly):
@@ -104,11 +146,7 @@ class AlibreNeutralizer:
             raise Exception("Cannot initialize AssemblyNeutralizer without a valid Alibre Assembly object.")
         
         # Make sure the base path exists
-        if not os.path.exists(base_path):
-            raise Exception("Provided Base Path does not exist! We will be unable to export there.")
-        else:
-            # if it does exist, store it
-            self.base_path = base_path
+        self.base_path = os.path.normpath(base_path)
         
         # Validate and store the export directives
         self.export_directives = list()
@@ -119,6 +157,20 @@ class AlibreNeutralizer:
                 else:
                     # If there's something in the list that ISN'T an ExportDirective
                     raise Exception("Invalid object received. Expected an instance of ExportDirective.")
+    
+    def _convert_base_path_to_absolute(self):
+        """Convert self.base_path to an absolute path, relative to the directory where self.root_component is.
+        In the rare case that self.base_path is already absolute, just return it as-is."""
+        # type: (AlibreNeutralizer) -> str
+
+        if os.path.isabs(self.base_path):
+            return self.base_path
+        else:
+            # It's not absolute. We need to make it absolute.
+            root_assembly_dir = os.path.dirname(
+                os.path.normpath(self.root_component.FileName)
+            )
+            return os.path.normpath(os.path.join(root_assembly_dir, self.base_path))
     
     def export_all(self):
         """Carry out the ExportDirectives in ``self.export_directives`` on the Part or Assembly in ``self.root_component.``"""
@@ -186,6 +238,11 @@ class AlibreNeutralizer:
 
         return already_processed_files
 
+    def _purge_according_to_export_directive(self, export_directive):
+        """Given an ExportDirective, delete any old files it's configured to purge. This should be called before exporting any new files."""
+        # type: (AlibreNeutralizer, ExportDirective) -> None
+        pass # TODO: write real code here :)
+
 
     def _execute_single_export_directive(self, component, export_directive):
         """Given a ``Part`` or ``Assembly``, execute one ``ExportDirective`` against it. This function does NOT perform any deduplication checking."""
@@ -243,31 +300,41 @@ class AlibreNeutralizer:
         """Given a Part or Assembly, export the specified file type to the specified absolute path."""
         # type: (AlibreNeutralizer, Part | Assembly, int, str) -> None
 
-        if export_type == ExportTypes.SAT:
-            component.ExportSAT(export_path_abs, 0, True) # TODO: Figure out an appropriate File Version (probably not 0)
-        elif export_type == ExportTypes.STEP203:
-            component.ExportSTEP203(export_path_abs)
-        elif export_type == ExportTypes.STEP214:
-            component.ExportSTEP214(export_path_abs)
-        elif export_type == ExportTypes.IGES:
-            component.ExportIGES(export_path_abs)
-        elif export_type == ExportTypes.STL:
-            component.ExportSTL(export_path_abs)
+        # TODO: Better error handling/logging than this.
+        # This gets the job done for testing the path interpretations.
+        try:
+            if export_type == ExportTypes.SAT:
+                component.ExportSAT(export_path_abs, 0, True) # TODO: Figure out an appropriate File Version (probably not 0)
+            elif export_type == ExportTypes.STEP203:
+                component.ExportSTEP203(export_path_abs)
+            elif export_type == ExportTypes.STEP214:
+                component.ExportSTEP214(export_path_abs)
+            elif export_type == ExportTypes.IGES:
+                component.ExportIGES(export_path_abs)
+            elif export_type == ExportTypes.STL:
+                component.ExportSTL(export_path_abs)
+        except:
+            print "ERROR: There was a problem exporting {0}.".format(component.FileName)
     
     def _get_absolute_export_path(self, export_path_relative):
         """Combine a given relative export path with this ``AlibreNeutralizer``'s absolute ``base_path``, to give an absolute path."""
-        probable_path = os.path.join(self.base_path, export_path_relative)
 
-        # Scrub out some illegal characters
+
+        # Scrub out some illegal characters from the relative portion of the path
+        # These sometimes sneak in as part of the names of the Alibre files
         pattern = r'[^\w_.: \-' + re.escape(os.sep) + r']'
-        probable_path = re.sub(pattern, '_', probable_path)
+        export_path_relative_sanitized = re.sub(pattern, '_', export_path_relative)
 
-        # TODO: still could use more error checking
-        return probable_path
+        return os.path.normpath(
+            os.path.join(
+                self._convert_base_path_to_absolute(),
+                export_path_relative_sanitized
+            )
+        )
 
 foo = AlibreNeutralizer(
     CurrentAssembly(),
-    "D:\\Users\\Hampton\\Downloads\\TestNeutralizer",
+    "./",
     [
         ExportDirective(ExportTypes.STEP203, "{Number}_{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
         ExportDirective(ExportTypes.STL, "{Number}_{Name}.stl")
