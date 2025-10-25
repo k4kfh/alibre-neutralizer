@@ -123,11 +123,15 @@ class AlibreNeutralizer:
     def export_all(self):
         """Carry out the ExportDirectives in ``self.export_directives`` on the Part or Assembly in ``self.root_component.``"""
 
-        exported_files = set() # This will be a set of filenames that we've exported. This ensures we only export each component once.
+        processed_files = set() # This will be a set of file absolute paths that we've processed (run export directives against).
+        # This ensures we only export each component once.
+        # Even if the export directive says not to export anything for a given file, we still add that file to the "processed" list.
+        # Note that we use absolute paths (e.g. C:\wherever\myThing.AD_PRT) over Alibre's .Name property, because .Name includes the instance ID (the "<37>" type thing) at the end, while the filename does not.
+        # May need to change this in the future if we want to export directly from PDM instead of from a package, since FileName is None in PDM.
 
         # Step 1: Export parts in root assembly, and add those parts to the exported_files list
-        exported_files = exported_files.union(
-            self._export_parts(self.root_component, self.export_directives, exported_files)
+        processed_files = processed_files.union(
+            self._export_parts(self.root_component, self.export_directives, processed_files)
         )
 
         # Step 2: Export subassemblies in root assembly (recursive)
@@ -135,22 +139,54 @@ class AlibreNeutralizer:
         #   for edir in export_directives
         #     newly_exported_names = _export_subassembly_recursive(component, edir)
         #     exported_files.append(newly_exported_names)
+        for subassy in self.root_component.SubAssemblies:
+            processed_files = processed_files.union(
+                self._export_subassemblies_recursive(subassy, self.export_directives, processed_files)
+            )
 
-    def _export_parts(self, assembly, export_directives, already_exported_files):
+    def _export_parts(self, assembly, export_directives, already_processed_files):
         """Given an Assembly (or AssembledSubAssembly), an ExportDirective, and a list of already-exported files to ignore,
         export the parts in the assembly according to the ExportDirective, and return an updated list of exported files."""
         # type (AlibreNeutralizer, Assembly | AssembledSubAssembly, list[ExportDirective], set[str]) -> set[str]
 
-        newly_exported_files = list()
         for part in assembly.Parts:
-            # Run through all the export directives on this part
-            for edir in export_directives:
-                self._execute_single_export_directive(part, edir)
-            # Once all Export Directives have been executed, add it to the list of exports
-            newly_exported_files.append(part.Name)
+            # First, make sure we haven't processed this one already
+            if part.FileName not in already_processed_files:
+                # Run through all the export directives on this part
+                for edir in export_directives:
+                    self._execute_single_export_directive(part, edir)
+                # Once all Export Directives have been executed, add it to the list of exports
+                already_processed_files = already_processed_files.union({part.FileName})
+            else:
+                print "Skipping {name}, since we already processed it.".format(name=part.Name)
 
-        return already_exported_files.union(newly_exported_files)
-        
+        return already_processed_files
+
+    def _export_subassemblies_recursive(self, subassembly, export_directives, already_processed_files):
+        # type (AlibreNeutralizer, AssembledSubAssembly, list[ExportDirective], set[str]) -> set[str]
+
+        # Step 1 : Export parts
+        # If the export directives have "Export Parts" set to False, this code won't do anything
+        # Also, if any of these parts have already been exported, they'll be skipped automatically in this function
+        already_processed_files = already_processed_files.union(
+            self._export_parts(subassembly, export_directives, already_processed_files)
+        )
+
+        # Step 2 : Export this subassembly
+        for edir in export_directives:
+            self._execute_single_export_directive(subassembly, edir)
+        already_processed_files = already_processed_files.union({subassembly.FileName})
+
+        # Step 3: Recurse
+        for subsubassy in subassembly.SubAssemblies:
+            if subsubassy.FileName not in already_processed_files:
+                already_processed_files = already_processed_files.union(
+                    self._export_subassemblies_recursive(subsubassy, export_directives, already_processed_files)
+                )
+
+        return already_processed_files
+
+
     def _execute_single_export_directive(self, component, export_directive):
         """Given a ``Part`` or ``Assembly``, execute one ``ExportDirective`` against it. This function does NOT perform any deduplication checking."""
         # type: (AlibreNeutralizer, Part, ExportDirective | list[ExportDirective]) -> None
@@ -233,8 +269,8 @@ foo = AlibreNeutralizer(
     CurrentAssembly(),
     "D:\\Users\\Hampton\\Downloads\\TestNeutralizer",
     [
-        ExportDirective(ExportTypes.STEP203, "{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
-        ExportDirective(ExportTypes.STL, "./whatever/the/path/is.stl")
+        ExportDirective(ExportTypes.STEP203, "{Number}_{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
+        ExportDirective(ExportTypes.STL, "{Number}_{Name}.stl")
     ]
 )
 
