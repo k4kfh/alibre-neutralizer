@@ -3,6 +3,7 @@ from AlibreScript import *
 
 # real dependencies
 import os
+import re
 
 class ExportTypes:
     """AlibreScript's IronPython interpreter doesn't have the Enum library available, so this was my best shot at fudging enum-ish behavior."""
@@ -119,31 +120,85 @@ class AlibreNeutralizer:
                     # If there's something in the list that ISN'T an ExportDirective
                     raise Exception("Invalid object received. Expected an instance of ExportDirective.")
     
-    def export_recursively(self):
+    def export_all(self):
         """Carry out the ExportDirectives in ``self.export_directives`` on the Part or Assembly in ``self.root_component.``"""
 
         exported_files = set() # This will be a set of filenames that we've exported. This ensures we only export each component once.
+
+        # Step 1: Export parts in root assembly, and add those parts to the exported_files list
+        exported_files = exported_files.union(
+            self._export_parts(self.root_component, self.export_directives, exported_files)
+        )
+
+        # Step 2: Export subassemblies in root assembly (recursive)
+        # for subassy in subassemblies
+        #   for edir in export_directives
+        #     newly_exported_names = _export_subassembly_recursive(component, edir)
+        #     exported_files.append(newly_exported_names)
+
+    def _export_parts(self, assembly, export_directives, already_exported_files):
+        """Given an Assembly (or AssembledSubAssembly), an ExportDirective, and a list of already-exported files to ignore,
+        export the parts in the assembly according to the ExportDirective, and return an updated list of exported files."""
+        # type (AlibreNeutralizer, Assembly | AssembledSubAssembly, list[ExportDirective], set[str]) -> set[str]
+
+        newly_exported_files = list()
+        for part in assembly.Parts:
+            # Run through all the export directives on this part
+            for edir in export_directives:
+                self._execute_single_export_directive(part, edir)
+            # Once all Export Directives have been executed, add it to the list of exports
+            newly_exported_files.append(part.Name)
+
+        return already_exported_files.union(newly_exported_files)
         
     def _execute_single_export_directive(self, component, export_directive):
         """Given a ``Part`` or ``Assembly``, execute one ``ExportDirective`` against it. This function does NOT perform any deduplication checking."""
         # type: (AlibreNeutralizer, Part, ExportDirective | list[ExportDirective]) -> None
         
-        # TODO: Validate that we actually have a Part, Subassembly, or Assembly
+        if not (
+            isinstance(component, AssembledPart)
+            or isinstance(component, Part)
+            or isinstance(component, AssembledSubAssembly)
+            or isinstance(component, Assembly)):
+            raise Exception("Invalid argument. Expected a Part, AssembledPart, AssembledSubAssembly, or Assembly.")
 
         if isinstance(export_directive, ExportDirective):
-            # Confirmed: We have a valid ExportDirective
+            # Confirmed: We have a valid ExportDirective.
+            # Now we need to read that ExportDirective and compare it against the type of component we're dealing with.
+            # This will dictate whether we actually need to export this component.
             if export_directive.export_parts == True and (isinstance(component, AssembledPart) or isinstance(component, Part)):
                 # We need to export this Part
-                print "Should export this Part."
-                self._export(component, export_directive.export_type, self._get_absolute_export_path(export_directive.getExportPath(component)))
+                abs_export_path = self._get_absolute_export_path(
+                    export_directive.getExportPath(component)
+                )
+                print "Should export this Part {name} to {path}".format(name=component.Name, path=abs_export_path)
+                self._export(
+                    component,
+                    export_directive.export_type,
+                    abs_export_path
+                )
             elif export_directive.export_subassemblies == True and isinstance(component, AssembledSubAssembly):
                 # We need to export this Subassembly
-                print "Should export this Subassembly."
-                self._export(component, export_directive.export_type, self._get_absolute_export_path(export_directive.getExportPath(component)))
+                abs_export_path = self._get_absolute_export_path(
+                    export_directive.getExportPath(component)
+                )
+                print "Should export this Subassembly {name} to {path}".format(name=component.Name, path=abs_export_path)
+                self._export(
+                    component,
+                    export_directive.export_type,
+                    abs_export_path
+                )
             elif export_directive.export_root_assembly == True and isinstance(component, Assembly):
                 # We need to export this root Assembly
-                print "Should export this Assembly."
-                self._export(component, export_directive.export_type, self._get_absolute_export_path(export_directive.getExportPath(component)))
+                abs_export_path = self._get_absolute_export_path(
+                    export_directive.getExportPath(component)
+                )
+                print "Should export this Assembly {name} to {path}".format(name=component.Name, path=abs_export_path)
+                self._export(
+                    component,
+                    export_directive.export_type,
+                    abs_export_path
+                )
 
         else:
             raise Exception("Invalid argument - expected an ExportDirective.")
@@ -164,18 +219,26 @@ class AlibreNeutralizer:
             component.ExportSTL(export_path_abs)
     
     def _get_absolute_export_path(self, export_path_relative):
+        """Combine a given relative export path with this ``AlibreNeutralizer``'s absolute ``base_path``, to give an absolute path."""
         probable_path = os.path.join(self.base_path, export_path_relative)
-        # TODO: need a lot better checking of syntax here
+
+        # Scrub out some illegal characters
+        pattern = r'[^\w_.: \-' + re.escape(os.sep) + r']'
+        probable_path = re.sub(pattern, '_', probable_path)
+
+        # TODO: still could use more error checking
         return probable_path
 
 foo = AlibreNeutralizer(
     CurrentAssembly(),
     "D:\\Users\\Hampton\\Downloads\\TestNeutralizer",
     [
-        ExportDirective(ExportTypes.STEP203, "{Name}_{Number}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
+        ExportDirective(ExportTypes.STEP203, "{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
         ExportDirective(ExportTypes.STL, "./whatever/the/path/is.stl")
     ]
 )
 
 # Test export path generation
-print foo._execute_single_export_directive(CurrentAssembly(), foo.export_directives[0])
+foo._execute_single_export_directive(CurrentAssembly(), foo.export_directives[0])
+foo.export_all()
+
