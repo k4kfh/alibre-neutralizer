@@ -16,13 +16,13 @@ class ExportTypes:
     def get_file_extensions(self, export_type):
         """Given an integer representing an export file type, return a list of possible file extensions corresponding to that export file type."""
         if (export_type == self.STEP203) or (export_type == self.STEP214):
-            return ["stp", "step"]
+            return [".stp", ".step"]
         elif (export_type == self.SAT):
-            return ["sat"]
+            return [".sat"]
         elif (export_type == self.STL):
-            return ["stl"]
+            return [".stl"]
         elif (export_type == self.IGES):
-            return ["iges", "igs"]
+            return [".iges", ".igs"]
         else:
             raise Exception("Invalid export type provided.")
 
@@ -42,7 +42,7 @@ class ExportDirective:
         For example, ``./whatever/relative/path/{FileName}_{Revision}.stp``. Available variables are: TODO
         :type export_rel_path_expression: str
 
-        :param purge_directory_before_export: Set to a relative path that you'd like purged of your selected export type (.stp, .sat, etc) before exporting.
+        :param purge_directory_before_export: Set to a path (relative to the root assembly) that you'd like purged of your selected export type (.stp, .sat, etc) before exporting.
         If set to None (the default), no files will be deleted before exporting new ones (although new files may overwrite old files).
 
         :param export_root_assembly: Set to False to skip exporting the root assembly with this Export Directive.
@@ -88,37 +88,55 @@ class ExportDirective:
             raise Exception("Expected a Part or Assembly, but did not receive one.")
         
         # At this point we can safely assume we have an Alibre Part/Assembly
-        path = self.export_rel_path_expression.format(
-            Comment = component.Comment,
-            CostCenter = component.CostCenter,
-            CreatedBy = component.CreatedBy,
-            CreatedDate = component.CreatedDate,
-            CreatingApplication = component.CreatingApplication,
-            Density = component.Density,
-            Description = component.Description,
-            DocumentNumber = component.DocumentNumber,
-            EngineeringApprovalDate = component.EngineeringApprovalDate,
-            EngineeringApprovedBy = component.EngineeringApprovedBy,
-            EstimatedCost = component.EstimatedCost,
-            FileName = component.FileName, # This is a goofy convention of the Alibre API. "FileName" is really the absolute path. "Name" is the name on its own.
-            Keywords = component.Keywords,
-            LastAuthor = component.LastAuthor,
-            LastUpdateDate = component.LastUpdateDate,
-            ManufacturingApprovedBy = component.ManufacturingApprovedBy,
-            ModifiedInformation = component.ModifiedInformation,
-            Name = component.Name,
-            Number = component.Number, # Part number
-            Product = component.Product,
-            ReceivedFrom = component.ReceivedFrom,
-            Revision = component.Revision,
-            StockSize = component.StockSize,
-            Supplier = component.Supplier,
-            Title = component.Title,
-            Vendor = component.Vendor,
-            WebLink = component.WebLink,
+        path_unsanitized = os.path.normpath(
+            self.export_rel_path_expression.format(
+                Comment = component.Comment,
+                CostCenter = component.CostCenter,
+                CreatedBy = component.CreatedBy,
+                CreatedDate = component.CreatedDate,
+                CreatingApplication = component.CreatingApplication,
+                Density = component.Density,
+                Description = component.Description,
+                DocumentNumber = component.DocumentNumber,
+                EngineeringApprovalDate = component.EngineeringApprovalDate,
+                EngineeringApprovedBy = component.EngineeringApprovedBy,
+                EstimatedCost = component.EstimatedCost,
+                FileName = component.FileName, # This is a goofy convention of the Alibre API. "FileName" is really the absolute path. "Name" is the name on its own.
+                Keywords = component.Keywords,
+                LastAuthor = component.LastAuthor,
+                LastUpdateDate = component.LastUpdateDate,
+                ManufacturingApprovedBy = component.ManufacturingApprovedBy,
+                ModifiedInformation = component.ModifiedInformation,
+                Name = component.Name,
+                Number = component.Number, # Part number
+                Product = component.Product,
+                ReceivedFrom = component.ReceivedFrom,
+                Revision = component.Revision,
+                StockSize = component.StockSize,
+                Supplier = component.Supplier,
+                Title = component.Title,
+                Vendor = component.Vendor,
+                WebLink = component.WebLink,
+            )
         )
 
-        return path
+        # Scrub out some illegal characters from the relative portion of the path
+        # These sometimes sneak in as part of the names of the Alibre files
+        # Since we have put the path through os.path.normpath() already, we can avoid escaping out any important separators
+        # by simply escaping os.sep character.
+        pattern = r'[^\w_.: \-' + re.escape(os.sep) + r']'
+        path_sanitized = re.sub(pattern, '_', path_unsanitized)
+
+        return path_sanitized
+    
+    def getExtensionsToPurge(self):
+        """Return the list of extensions which should be purged before a new export.
+        If the purge functionality is disabled, return an empty list."""
+        # type: (ExportDirective) -> list[str]
+        if self.purge_before_export == None:
+            return [] # Returning an empty list means "purge no files"
+        else:
+            return ExportTypes.get_file_extensions(self.export_type)
 
 class AlibreNeutralizer:
     """Create an instance of this, with an Alibre Assembly passed in, to handle the backend logic of recursively exporting files."""
@@ -157,20 +175,6 @@ class AlibreNeutralizer:
                 else:
                     # If there's something in the list that ISN'T an ExportDirective
                     raise Exception("Invalid object received. Expected an instance of ExportDirective.")
-    
-    def _convert_base_path_to_absolute(self):
-        """Convert self.base_path to an absolute path, relative to the directory where self.root_component is.
-        In the rare case that self.base_path is already absolute, just return it as-is."""
-        # type: (AlibreNeutralizer) -> str
-
-        if os.path.isabs(self.base_path):
-            return self.base_path
-        else:
-            # It's not absolute. We need to make it absolute.
-            root_assembly_dir = os.path.dirname(
-                os.path.normpath(self.root_component.FileName)
-            )
-            return os.path.normpath(os.path.join(root_assembly_dir, self.base_path))
     
     def export_all(self):
         """Carry out the ExportDirectives in ``self.export_directives`` on the Part or Assembly in ``self.root_component.``"""
@@ -241,8 +245,30 @@ class AlibreNeutralizer:
     def _purge_according_to_export_directive(self, export_directive):
         """Given an ExportDirective, delete any old files it's configured to purge. This should be called before exporting any new files."""
         # type: (AlibreNeutralizer, ExportDirective) -> None
-        pass # TODO: write real code here :)
+        
+        # Recursively purge files with extensions listed in export_directive.
+        for file_extension in export_directive.getExtensionsToPurge():
+            # Recursive purge files of type ".{fileExtension}" from self._convert_base_path_to_absolute() + export_directive.purge_before_export
 
+            # Purge path = export_directive.purge_before_export, relative to self._convert_base_path_to_absolute()
+            purge_path = os.path.normpath(
+                os.path.join(
+                    self._convert_base_path_to_absolute(),
+                    os.path.normpath(export_directive.purge_before_export)
+                )
+            )
+
+            # Recursively purge files of type fileExtension in purge_path and subdirectories
+            for root, _, files in os.walk(purge_path):
+                for file in files:
+                    if file.endswith(file_extension):
+                        file_path = os.path.join(root, file)
+                        try:
+                            # TODO: uncomment to do it for realsies
+                            # os.remove(file_path)
+                            print "Deleted: {file_path}".format(file_path=file_path)
+                        except OSError as e:
+                            print "Error deleting {file_path}: {e}".format(file_path=file_path, e=e)
 
     def _execute_single_export_directive(self, component, export_directive):
         """Given a ``Part`` or ``Assembly``, execute one ``ExportDirective`` against it. This function does NOT perform any deduplication checking."""
@@ -316,6 +342,22 @@ class AlibreNeutralizer:
         except:
             print "ERROR: There was a problem exporting {0}.".format(component.FileName)
     
+    def _convert_base_path_to_absolute(self):
+        """Convert self.base_path to an absolute path, relative to the directory where self.root_component is.
+        In the rare case that self.base_path is already absolute, just return it as-is.
+        
+        This serves as the 'base' path for individual file export paths."""
+        # type: (AlibreNeutralizer) -> str
+
+        if os.path.isabs(self.base_path):
+            return self.base_path
+        else:
+            # It's not absolute. We need to make it absolute.
+            root_assembly_dir = os.path.dirname(
+                os.path.normpath(self.root_component.FileName)
+            )
+            return os.path.normpath(os.path.join(root_assembly_dir, self.base_path))
+    
     def _get_absolute_export_path(self, export_path_relative):
         """Combine a given relative export path with this ``AlibreNeutralizer``'s absolute ``base_path``, to give an absolute path."""
 
@@ -334,10 +376,10 @@ class AlibreNeutralizer:
 
 foo = AlibreNeutralizer(
     CurrentAssembly(),
-    "./",
+    "../../../../", # This is the directory where the AD_PKG file is stored
     [
-        ExportDirective(ExportTypes.STEP203, "{Number}_{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
-        ExportDirective(ExportTypes.STL, "{Number}_{Name}.stl")
+        ExportDirective(ExportTypes.STEP203, "./STEPs/{Number}_{Name}.stp"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
+        ExportDirective(ExportTypes.STL, "./STLs/{Number}_{Name}.stl")
     ]
 )
 
