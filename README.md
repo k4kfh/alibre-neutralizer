@@ -112,8 +112,30 @@ Here's an example of how that configuration file would look:
 
 ## Running an Export
 
-TODO: screenshots/GIFs showing how to export
+**Warning: Alibre Neutralizer is not guaranteed to work with Alibre PDM!** If you want to use Alibre Neutralizer with Alibre PDM, I recommend you export a Package (``.AD_PKG``) from Alibre PDM, then open that package on your local filesystem to perform the exports. I have gotten extremely strange and unpredictable results trying to export directly from Alibre PDM.
+
+After creating a configuration file and saving it in an appropriate place on your filesystem, you're ready to run an export.
+
+Open the Alibre Script add-on, open ``alibre-neutralizer.py`` within it, and click "Run" in the Alibre Script ribbon.
+
+![alt text](./docs-images/step-1-run-script.png)
+
+When prompted, select your configuration file.
+
+![alt text](./docs-images/step-2-select-configuration.png)
+
+If Alibre Neutralizer is able to understand your configuration file, it will show this dialog. Note the number of export directives it processed - if this doesn't match your configuration file, something is wrong. Assuming it understood your configuration as-expected, click "Yes" to start the export process.
+
+![alt text](./docs-images/step-3-confirm-export.png)
+
+While exporting, Alibre Neutralizer logs to the Alibre Script console. Although a better error handling system is on the wishlist, keep an eye out for any "Error" messages in the console, as this is currently the only place that they're logged.
+
+![alt text](./docs-images/step-4-console.png)
+
+When the export is complete, Alibre Neutralizer will notify you like this:
+
+![alt text](./docs-images/successful-export-notification.png)
 
 ## Typical Use Case
 
-TODO: Link to blog post on how I personally would recommend using it
+_Coming Soon_
