@@ -1,3 +1,9 @@
+# -- ALIBRE NEUTRALIZER --
+# Parametric Bulk-Exporter for Alibre Design
+# -------------------------------------------
+# https://github.com/k4kfh/alibre-neutralizer
+# Released under the LGPL 3.0 License
+
 # import for auto-completion/code hints in development
 from AlibreScript import *
 
