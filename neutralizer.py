@@ -72,7 +72,7 @@ class ExportDirective:
         self.export_subassemblies = export_subassemblies
         self.export_parts = export_parts
     
-    def getExportPath(self, component):
+    def get_export_path(self, component):
         """Given a Part or Subassembly or Assembly, return the relative Export path based on the expression in ``export_rel_path_expression``.
         
         :type self: ExportDirective
@@ -90,37 +90,37 @@ class ExportDirective:
             raise Exception("Expected a Part or Assembly, but did not receive one.")
         
         # At this point we can safely assume we have an Alibre Part/Assembly
-        # TODO: Create "sanitized" versions of each of these values.
-        # For example, Supplier_Sanitized = component.Supplier normally, but if component.Supplier is empty, it could equal "Undefined Supplier"
+        component_properties_prettified = self.get_prettified_component_properties(component)
+        
         path_unsanitized = os.path.normpath(
             self.export_rel_path_expression.format(
-                Comment = component.Comment,
-                CostCenter = component.CostCenter,
-                CreatedBy = component.CreatedBy,
-                CreatedDate = component.CreatedDate,
-                CreatingApplication = component.CreatingApplication,
-                Density = component.Density,
-                Description = component.Description,
-                DocumentNumber = component.DocumentNumber,
-                EngineeringApprovalDate = component.EngineeringApprovalDate,
-                EngineeringApprovedBy = component.EngineeringApprovedBy,
-                EstimatedCost = component.EstimatedCost,
-                FileName = component.FileName, # This is a goofy convention of the Alibre API. "FileName" is really the absolute path. "Name" is the name on its own.
-                Keywords = component.Keywords,
-                LastAuthor = component.LastAuthor,
-                LastUpdateDate = component.LastUpdateDate,
-                ManufacturingApprovedBy = component.ManufacturingApprovedBy,
-                ModifiedInformation = component.ModifiedInformation,
-                Name = component.Name,
-                Number = component.Number, # Part number
-                Product = component.Product,
-                ReceivedFrom = component.ReceivedFrom,
-                Revision = component.Revision,
-                StockSize = component.StockSize,
-                Supplier = component.Supplier,
-                Title = component.Title,
-                Vendor = component.Vendor,
-                WebLink = component.WebLink,
+                Comment = component_properties_prettified["Comment"],
+                CostCenter = component_properties_prettified["CostCenter"],
+                CreatedBy = component_properties_prettified["CreatedBy"],
+                CreatedDate = component_properties_prettified["CreatedDate"],
+                CreatingApplication = component_properties_prettified["CreatingApplication"],
+                Density = component_properties_prettified["Density"],
+                Description = component_properties_prettified["Description"],
+                DocumentNumber = component_properties_prettified["DocumentNumber"],
+                EngineeringApprovalDate = component_properties_prettified["EngineeringApprovalDate"], 
+                EngineeringApprovedBy = component_properties_prettified["EngineeringApprovedBy"],
+                EstimatedCost = component_properties_prettified["EstimatedCost"],
+                FileName = component_properties_prettified["FileName"],
+                Keywords = component_properties_prettified["Keywords"],
+                LastAuthor = component_properties_prettified["LastAuthor"],
+                LastUpdateDate = component_properties_prettified["LastUpdateDate"],
+                ManufacturingApprovedBy = component_properties_prettified["ManufacturingApprovedBy"],
+                ModifiedInformation = component_properties_prettified["ModifiedInformation"],
+                Name = component_properties_prettified["Name"],
+                Number = component_properties_prettified["Number"],
+                Product = component_properties_prettified["Product"],
+                ReceivedFrom = component_properties_prettified["ReceivedFrom"],
+                Revision = component_properties_prettified["Revision"],
+                StockSize = component_properties_prettified["StockSize"],
+                Supplier = component_properties_prettified["Supplier"],
+                Title = component_properties_prettified["Title"],
+                Vendor = component_properties_prettified["Vendor"],
+                WebLink = component_properties_prettified["WebLink"],
             )
         )
 
@@ -132,8 +132,93 @@ class ExportDirective:
         path_sanitized = re.sub(pattern, '_', path_unsanitized)
 
         return path_sanitized
-    
-    def getExtensionsToPurge(self):
+
+    def get_prettified_component_properties(self, component):
+        """Return a dictionary of Alibre component properties (such as Number, CostCenter, etc).
+        The only difference over the 'raw' data is that this dictionary will replace any totally-empty values
+        with 'Undefined {whatever}', where {whatever} is the name of the property (e.g. 'Cost Center').
+        
+        This ensures that if you use these values as folders or portions of filenames, you don't end up with random empty spaces or other strange quirks."""
+        # type: (ExportDirective, Part | Assembly | AssembledPart | AssembledSubAssembly)
+
+        # Create skeleton
+        component_prettified_properties = {
+            "Comment" : None,
+            "CostCenter" : None,
+            "CreatedBy" : None,
+            "CreatedDate" : None,
+            "CreatingApplication" : None,
+            "Density" : None,
+            "Description" : None,
+            "DocumentNumber" : None,
+            "EngineeringApprovalDate" : None,
+            "EngineeringApprovedBy" : None,
+            "EstimatedCost" : None,
+            "FileName" : None,
+            "Keywords" : None,
+            "LastAuthor" : None,
+            "LastUpdateDate" : None,
+            "ManufacturingApprovedBy" : None,
+            "ModifiedInformation" : None,
+            "Name" : None,
+            "Number" : None,
+            "Product" : None,
+            "ReceivedFrom" : None,
+            "Revision" : None,
+            "StockSize" : None,
+            "Supplier" : None,
+            "Title" : None,
+            "Vendor" : None,
+            "WebLink" : None,
+        }
+
+        default_values = [
+            ("Comment", "Undefined Comment"),
+            ("CostCenter", "Undefined Cost Center"),
+            ("CreatedBy", "Undefined Creator"),
+            ("CreatedDate", "Undefined Creation Date"),
+            ("CreatingApplication", "Undefined Creating Application"),
+            ("Density", "Undefined Density"),
+            ("Description", "Undefined Description"),
+            ("DocumentNumber", "Undefined Document Number"),
+            ("EngineeringApprovalDate", "Undefined Engineering Approval Date"),
+            ("EngineeringApprovedBy", "Undefined Engineering Approver"),
+            ("EstimatedCost", "Undefined Estimated Cost"),
+            ("FileName", "Undefined File Name"),
+            ("Keywords", "Undefined Keywords"),
+            ("LastAuthor", "Undefined Last Author"),
+            ("LastUpdateDate", "Undefined Last Update Date"),
+            ("ManufacturingApprovedBy", "Undefined Manufacturing Approved By"),
+            ("ModifiedInformation", "Undefined Modified Information"),
+            ("Name", "Undefined Name"),
+            ("Number", "Undefined Part Number"),
+            ("Product", "Undefined Product"),
+            ("ReceivedFrom", "Undefined Received From"),
+            ("Revision", "Undefined Revision"),
+            ("StockSize", "Undefined Stock Size"),
+            ("Supplier", "Undefined Supplier"),
+            ("Title", "Undefined Title"),
+            ("Vendor", "Undefined Vendor"),
+            ("WebLink", "Undefined Web Link"),
+        ]
+
+        for key, default_string in default_values:
+            # Use the getattr() function to safely access the component's attribute
+            component_value = getattr(component, key, None)
+
+            # The expression `not component_value` handles None, 0, and empty string ("")
+            # For properties that should specifically only default on None or "",
+            # you can use `if component_value is None or component_value == "":`
+            if component_value is None or component_value == "":
+                component_prettified_properties[key] = default_string
+            else:
+                # Otherwise, assign the actual value from the component object
+                component_prettified_properties[key] = component_value
+        
+        return component_prettified_properties
+
+
+    def get_extensions_to_purge(self):
         """Return the list of extensions which should be purged before a new export.
         If the purge functionality is disabled, return an empty list."""
         # type: (ExportDirective) -> list[str]
@@ -255,7 +340,7 @@ class AlibreNeutralizer:
         # type: (AlibreNeutralizer, ExportDirective) -> None
         
         # Recursively purge files with extensions listed in export_directive.
-        for file_extension in export_directive.getExtensionsToPurge():
+        for file_extension in export_directive.get_extensions_to_purge():
             # Recursive purge files of type ".{fileExtension}" from self._convert_base_path_to_absolute() + export_directive.purge_before_export
 
             # Purge path = export_directive.purge_before_export, relative to self._convert_base_path_to_absolute()
@@ -296,7 +381,7 @@ class AlibreNeutralizer:
             if export_directive.export_parts == True and (isinstance(component, AssembledPart) or isinstance(component, Part)):
                 # We need to export this Part
                 abs_export_path = self._get_absolute_export_path(
-                    export_directive.getExportPath(component)
+                    export_directive.get_export_path(component)
                 )
                 print "Should export this Part {name} to {path}".format(name=component.Name, path=abs_export_path)
                 self._export(
@@ -307,7 +392,7 @@ class AlibreNeutralizer:
             elif export_directive.export_subassemblies == True and isinstance(component, AssembledSubAssembly):
                 # We need to export this Subassembly
                 abs_export_path = self._get_absolute_export_path(
-                    export_directive.getExportPath(component)
+                    export_directive.get_export_path(component)
                 )
                 print "Should export this Subassembly {name} to {path}".format(name=component.Name, path=abs_export_path)
                 self._export(
@@ -318,7 +403,7 @@ class AlibreNeutralizer:
             elif export_directive.export_root_assembly == True and isinstance(component, Assembly):
                 # We need to export this root Assembly
                 abs_export_path = self._get_absolute_export_path(
-                    export_directive.getExportPath(component)
+                    export_directive.get_export_path(component)
                 )
                 print "Should export this Assembly {name} to {path}".format(name=component.Name, path=abs_export_path)
                 self._export(
@@ -392,7 +477,12 @@ foo = AlibreNeutralizer(
     "../../../../", # This is the directory where the AD_PKG file is stored
     [
         ExportDirective(ExportTypes.STEP203, "./STEPs/{Number}_{Name}.stp", "./STEPs"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
-        ExportDirective(ExportTypes.STL, "./STLs/{Number}_{Name}.stl", "./STLs")
+        ExportDirective(ExportTypes.STL, "./STLs/{Number}_{Name}.stl", "./STLs"),
+
+        # Group by P/N, not file type
+        ExportDirective(ExportTypes.STEP214, "./Combined/{Supplier}/{Number}/{Name}.stp", "./Combined"),
+        ExportDirective(ExportTypes.SAT, "./Combined/{Supplier}/{Number}/{Name}.sat", "./Combined"),
+        ExportDirective(ExportTypes.STL, "./Combined/{Supplier}/{Number}/{Name}.stl", "./Combined")
     ]
 )
 
