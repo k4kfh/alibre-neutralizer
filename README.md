@@ -138,4 +138,4 @@ When the export is complete, Alibre Neutralizer will notify you like this:
 
 ## Typical Use Case
 
-See [the ``example-project`` directory](./example-project/README.md) for a sample of how Alibre Neutralizer could be set up in an open-hardware focused repository.
+See [the ``example-project`` directory](./example-project/) for a sample of how Alibre Neutralizer could be set up in an open-hardware focused repository.
