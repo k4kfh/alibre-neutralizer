@@ -231,54 +231,17 @@ class ExportDirective:
 class AlibreNeutralizer:
     """Create an instance of this, with an Alibre Assembly passed in, to handle the backend logic of recursively exporting files."""
 
-    @staticmethod
-    def create_from_config_file(component, config_file_path):
-        """Create an AlibreNeutralizer instance from an XML configuration file.
-        
-        :param component: The top-level assembly that you want to recursively export.
-        :type component: Assembly | AssembledSubAssembly
-        
-        :param config_file_path: Path to the XML configuration file
-        :type config_file_path: str
-        
-        :return: A configured AlibreNeutralizer instance
-        :rtype: AlibreNeutralizer
-        """
-        tree = ET.parse(config_file_path)
-        root = tree.getroot()
-        
-        base_path = root.find('basePath').text
-        export_directives = []
-        
-        for directive in root.find('ExportDirectiveList').findall('ExportDirective'):
-            export_type = getattr(ExportTypes, directive.find('type').text)
-            path_expression = directive.find('RelativeExportPath').text
-            purge_directory = directive.find('purgeDirectory').text if directive.find('purgeDirectory') is not None else None
-            
-            export_directives.append(
-                ExportDirective(
-                    export_type=export_type,
-                    export_rel_path_expression=path_expression,
-                    purge_directory_before_export=purge_directory
-                )
-            )
-        
-        return AlibreNeutralizer(component, base_path, export_directives)
-
-    def __init__(self, component, base_path, export_directives = None):
-        # type: (AlibreNeutralizer, Assembly | AssembledSubAssembly, str, list[ExportDirective] | None) -> None
-        """Create and configure an instance of AlibreNeutralizer, the top-level class for managing bulk exports.
+    def __init__(self, component, config_file_path):
+        # type: (AlibreNeutralizer, Assembly | AssembledSubAssembly, str) -> None
+        """Create and configure an instance of AlibreNeutralizer from an XML configuration file.
         
         :type self: AlibreNeutralizer
 
         :param component: The top-level assembly that you want to recursively export.
         :type component: Assembly | AssembledSubAssembly
 
-        :param base_path: The base directory in which to store exports. This should be a relative path, relative to the location of ``component`` on the filesystem.
-        In the unlikely event that your use case requires it, you can make this an absolute path, although it is generally not recommended.
-
-        :param export_directives: A list of ExportDirectives defining the types of exports you want to make, how the files should be named/organized, and other parameters.
-        You can add additional ExportDirectives after creating the class.
+        :param config_file_path: Path to the XML configuration file that defines the export configuration.
+        :type config_file_path: str
         """
 
         # Store the root assembly or part, our main connection point to Alibre
@@ -286,19 +249,32 @@ class AlibreNeutralizer:
             self.root_component = component
         else:
             raise Exception("Cannot initialize AssemblyNeutralizer without a valid Alibre Assembly object.")
+
+        # Read the configuration file
+        tree = ET.parse(config_file_path)
+        root = tree.getroot()
         
-        # Make sure the base path exists
-        self.base_path = os.path.normpath(base_path)
+        # Store the config file path.
+        # This is used to interpret the "Base Path" from the config file, since it's specified RELATIVE to the config file's location.
+        self.config_file_path = config_file_path
+        # Get the base path from config
+        self.base_path = os.path.normpath(root.find('basePath').text)
         
-        # Validate and store the export directives
-        self.export_directives = list()
-        if export_directives != None:
-            for edir in export_directives:
-                if isinstance(edir, ExportDirective):
-                    self.export_directives.append(edir)
-                else:
-                    # If there's something in the list that ISN'T an ExportDirective
-                    raise Exception("Invalid object received. Expected an instance of ExportDirective.")
+        # Parse export directives from config
+        self.export_directives = []
+        for directive in root.find('ExportDirectiveList').findall('ExportDirective'):
+            export_type = getattr(ExportTypes, directive.find('type').text)
+            path_expression = directive.find('RelativeExportPath').text
+            purge_directory = directive.find('purgeDirectory').text if directive.find('purgeDirectory') is not None else None
+            
+            self.export_directives.append(
+                ExportDirective(
+                    export_type=export_type,
+                    export_rel_path_expression=path_expression,
+                    purge_directory_before_export=purge_directory
+                )
+            )
+
     
     def export_all(self):
         """Carry out the ExportDirectives in ``self.export_directives`` on the Part or Assembly in ``self.root_component.``"""
@@ -476,7 +452,7 @@ class AlibreNeutralizer:
             print "ERROR: There was a problem exporting {0}.".format(component.FileName)
     
     def _convert_base_path_to_absolute(self):
-        """Convert self.base_path to an absolute path, relative to the directory where self.root_component is.
+        """Convert self.base_path to an absolute path, relative to the directory where the config file lives.
         In the rare case that self.base_path is already absolute, just return it as-is.
         
         This serves as the 'base' path for individual file export paths."""
@@ -487,7 +463,7 @@ class AlibreNeutralizer:
         else:
             # It's not absolute. We need to make it absolute.
             root_assembly_dir = os.path.dirname(
-                os.path.normpath(self.root_component.FileName)
+                os.path.normpath(self.config_file_path)
             )
             return os.path.normpath(os.path.join(root_assembly_dir, self.base_path))
     
@@ -507,8 +483,8 @@ class AlibreNeutralizer:
             )
         )
 
-# Create an instance from the XML configuration
-foo = AlibreNeutralizer.create_from_config_file(CurrentAssembly(), "D:\Users\Hampton\Documents\Alibre Script Library\export-for-oshw\config.xml")
+# Create an instance using configuration from XML file
+foo = AlibreNeutralizer(CurrentAssembly(), "D:\\Users\\Hampton\\Downloads\\TestNeutralizer\\alibre-neutralizer-config.xml")
 
 # Test export path generation
 foo.export_all()

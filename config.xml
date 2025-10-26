@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <AlibreNeutralizerConfig>
-    <basePath>../../../../</basePath>
+    <!--The "Base" export path, relative to this config file's directory.
+    This is essentially an "offset" for all the RelativeExportPath tags below.-->
+    <basePath>./Neutral-Files</basePath>
     <ExportDirectiveList>
         <ExportDirective>
             <type>STEP203</type>
