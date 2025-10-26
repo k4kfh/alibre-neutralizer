@@ -1,0 +1,6 @@
+# Ignore the folders that appear when you extract this AD_PKG file
+# This will depend on your Alibre file structure (or your Alibre PDM structure)
+# Either way, I like ignoring these because you already have all your native Alibre data in the AD_PKG file.
+# No sense making Git keep up with it twice.
+1. Hardware
+3. Vendor Components

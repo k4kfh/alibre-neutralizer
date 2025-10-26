@@ -1,0 +1,10 @@
+# Example Project with Alibre Neutralizer
+
+This is an example project showing how one might utilize Alibre Neutralizer with an open-source-hardware project.
+* The native Alibre files are stored with an ``AD_PKG`` Package export.
+* The ``.gitignore`` file is customized to ignore the subfolders that result from extracting this particular Package file. So when you open it in Alibre, Git won't prompt you to put all the individual ``AD_PRT``/``AD_ASM`` files under Git tracking. In my opinion, there's no need to track these files individually, because you have the complete snapshot in the ``AD_PKG`` file.
+* The ``.gitattributes`` file is customized to track all the MCAD files (Native Alibre files _and_ neutral exports) with Git LFS, for better performance/efficiency.
+* The ``alibre-neutralizer-config.xml`` file controls all the settings for exporting ``Sherline Tailstock Assembly.AD_PKG`` to neutral files. This travels with the repository, so anyone who makes changes can generate a fresh ``.AD_PKG`` file, then export it with Alibre Neutralizer, and the file structure will remain consistent.
+  * I chose to export STEPs since this is generally considered the _most_ neutral format. Practically any CAD system, including FreeCAD, can deal with STEP files without any loss of fidelity. These things are the SVGs of the CAD world.
+  * I chose to export STLs to demonstrate the functionality for 3D printing, _and_ because [GitHub will diff STLs visually](https://github.blog/news-insights/product-news/3d-file-diffs/) if they're small enough. This means if you export STLs of your parts, you can review your changes with a 3D visual diff (even if they're sheet metal or machined components that you normally would _not_ export to STL).
+  * I chose to export SAT files because this is the highest-fidelity and highest-reliability export from Alibre Design. It's the "native tongue" of the underlying modeling kernel that Alibre uses.

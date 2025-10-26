@@ -423,10 +423,11 @@ class AlibreNeutralizer:
             # This will dictate whether we actually need to export this component.
             if export_directive.export_parts == True and (isinstance(component, AssembledPart) or isinstance(component, Part)):
                 # We need to export this Part
-                print "Exporting Part to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
+                print "- Exporting Part to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
                     export_directive.get_export_path(component)
                 )
+                print "- Path : {0}".format(abs_export_path)
                 self._export(
                     component,
                     export_directive.export_type,
@@ -434,10 +435,11 @@ class AlibreNeutralizer:
                 )
             elif export_directive.export_subassemblies == True and isinstance(component, AssembledSubAssembly):
                 # We need to export this Subassembly
-                print "Exporting Subassembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
+                print "- Exporting Subassembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
                     export_directive.get_export_path(component)
                 )
+                print "- Path : {0}".format(abs_export_path)
                 self._export(
                     component,
                     export_directive.export_type,
@@ -445,10 +447,11 @@ class AlibreNeutralizer:
                 )
             elif export_directive.export_root_assembly == True and isinstance(component, Assembly):
                 # We need to export this root Assembly
-                print "Exporting Root Assembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
+                print "- Exporting Root Assembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
                     export_directive.get_export_path(component)
                 )
+                print "- Path : {0}".format(abs_export_path)
                 self._export(
                     component,
                     export_directive.export_type,
@@ -531,7 +534,7 @@ def main():
         Windows().ErrorDialog("No config file was selected! Alibre Neutralizer will close now, and nothing will be exported.", window_name)
 
     # Create an instance using configuration from XML file
-    neutralizer = AlibreNeutralizer(CurrentAssembly(), "D:\\Users\\Hampton\\Downloads\\TestNeutralizer\\alibre-neutralizer-config.xml")
+    neutralizer = AlibreNeutralizer(CurrentAssembly(), cfg_file_path)
 
     # Now that we've created an AlibreNeutralizer, give the user a quick summary of how we understood the config file
     # This is their last opportunity to cancel
