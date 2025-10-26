@@ -8,26 +8,41 @@
             <type>STEP203</type>
             <RelativeExportPath>./STEPs/{Number}_{Name}.stp</RelativeExportPath>
             <purgeDirectory>./STEPs</purgeDirectory>
+            <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
+            <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./STLs/{Number}_{Name}.stl</RelativeExportPath>
             <purgeDirectory>./STLs</purgeDirectory>
+            <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
+            <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
         <ExportDirective>
             <type>STEP214</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stp</RelativeExportPath>
             <purgeDirectory>./Combined</purgeDirectory>
+            <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
+            <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
         <ExportDirective>
             <type>SAT</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.sat</RelativeExportPath>
             <purgeDirectory>./Combined</purgeDirectory>
+            <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
+            <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stl</RelativeExportPath>
             <purgeDirectory>./Combined</purgeDirectory>
+            <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
+            <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
     </ExportDirectiveList>
 </AlibreNeutralizerConfig>

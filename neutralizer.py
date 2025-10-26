@@ -266,12 +266,26 @@ class AlibreNeutralizer:
             export_type = getattr(ExportTypes, directive.find('type').text)
             path_expression = directive.find('RelativeExportPath').text
             purge_directory = directive.find('purgeDirectory').text if directive.find('purgeDirectory') is not None else None
-            
+
+            # Read boolean flags (default to True if the element is missing)
+            def _bool_from_elem(elem, default=True):
+                if elem is None or elem.text is None:
+                    return default
+                val = elem.text.strip().lower()
+                return val in ("true", "1", "yes", "y")
+
+            enable_root = _bool_from_elem(directive.find('EnableRootAssemblyExport'), True)
+            enable_sub = _bool_from_elem(directive.find('EnableSubassemblyExport'), True)
+            enable_part = _bool_from_elem(directive.find('EnablePartExport'), True)
+
             self.export_directives.append(
                 ExportDirective(
                     export_type=export_type,
                     export_rel_path_expression=path_expression,
-                    purge_directory_before_export=purge_directory
+                    purge_directory_before_export=purge_directory,
+                    export_root_assembly=enable_root,
+                    export_subassemblies=enable_sub,
+                    export_parts=enable_part
                 )
             )
 
