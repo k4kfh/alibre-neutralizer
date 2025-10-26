@@ -28,6 +28,20 @@ class ExportTypes:
             return [".iges", ".igs"]
         else:
             raise Exception("Invalid export type provided.")
+    
+    @staticmethod
+    def convert_to_string(export_type):
+        """Given an integer export type, return a string (like 'STEP203')."""
+        if export_type == ExportTypes.STEP203:
+            return "STEP203"
+        elif export_type == ExportTypes.STEP214:
+            return "STEP214"
+        elif export_type == ExportTypes.SAT:
+            return "SAT"
+        elif export_type == ExportTypes.STL:
+            return "STL"
+        elif export_type == ExportTypes.IGES:
+            return "IGES"
 
 class ExportDirective:
     """Each instance of this directs AssemblyNeutralizer to export a particular type of file, with a particular relative path and filename.
@@ -332,8 +346,6 @@ class AlibreNeutralizer:
                     self._execute_single_export_directive(part, edir)
                 # Once all Export Directives have been executed, add it to the list of exports
                 already_processed_files = already_processed_files.union({part.FileName})
-            else:
-                print "Skipping {name}, since we already processed it.".format(name=part.Name)
 
         return already_processed_files
 
@@ -385,9 +397,8 @@ class AlibreNeutralizer:
                         try:
                             # TODO: uncomment to do it for realsies
                             os.remove(file_path)
-                            print "Pre-Export Purge: Deleted: {file_path}".format(file_path=file_path)
                         except OSError as e:
-                            print "Pre-Export Purge: Error deleting {file_path}: {e}".format(file_path=file_path, e=e)
+                            print "ERROR: Could not delete {file_path} in pre-export purge: {e}".format(file_path=file_path, e=e)
 
     def _execute_single_export_directive(self, component, export_directive):
         """Given a ``Part`` or ``Assembly``, execute one ``ExportDirective`` against it. This function does NOT perform any deduplication checking."""
@@ -406,10 +417,10 @@ class AlibreNeutralizer:
             # This will dictate whether we actually need to export this component.
             if export_directive.export_parts == True and (isinstance(component, AssembledPart) or isinstance(component, Part)):
                 # We need to export this Part
+                print "Exporting Part to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
                     export_directive.get_export_path(component)
                 )
-                print "Should export this Part {name} to {path}".format(name=component.Name, path=abs_export_path)
                 self._export(
                     component,
                     export_directive.export_type,
@@ -417,10 +428,10 @@ class AlibreNeutralizer:
                 )
             elif export_directive.export_subassemblies == True and isinstance(component, AssembledSubAssembly):
                 # We need to export this Subassembly
+                print "Exporting Subassembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
                     export_directive.get_export_path(component)
                 )
-                print "Should export this Subassembly {name} to {path}".format(name=component.Name, path=abs_export_path)
                 self._export(
                     component,
                     export_directive.export_type,
@@ -428,10 +439,10 @@ class AlibreNeutralizer:
                 )
             elif export_directive.export_root_assembly == True and isinstance(component, Assembly):
                 # We need to export this root Assembly
+                print "Exporting Root Assembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
                     export_directive.get_export_path(component)
                 )
-                print "Should export this Assembly {name} to {path}".format(name=component.Name, path=abs_export_path)
                 self._export(
                     component,
                     export_directive.export_type,
@@ -498,9 +509,45 @@ class AlibreNeutralizer:
             )
         )
 
-# Create an instance using configuration from XML file
-foo = AlibreNeutralizer(CurrentAssembly(), "D:\\Users\\Hampton\\Downloads\\TestNeutralizer\\alibre-neutralizer-config.xml")
 
-# Test export path generation
-foo.export_all()
+def main():
+    """This is the entry point of the program.
+    Even though you don't HAVE to use a main function in Python scripts, I prefer it
+    since it limits the scope of the variables inside this function."""
+
+    window_name = "Alibre Neutralizer"
+    
+    # Take user input (ask for a config file)
+    cfg_file_path = Windows().OpenFileDialog("Select Neutralizer Config File", "XML Files | *.XML", ".XML")
+    # First see if they even selected anything
+    if cfg_file_path == "" or cfg_file_path == None:
+        # The user cancelled. Show an error to ensure they know what they just did.
+        Windows().ErrorDialog("No config file was selected! Alibre Neutralizer will close now, and nothing will be exported.", window_name)
+
+    # Create an instance using configuration from XML file
+    neutralizer = AlibreNeutralizer(CurrentAssembly(), "D:\\Users\\Hampton\\Downloads\\TestNeutralizer\\alibre-neutralizer-config.xml")
+
+    # Now that we've created an AlibreNeutralizer, give the user a quick summary of how we understood the config file
+    # This is their last opportunity to cancel
+    continue_window_prompt = """
+    Successfully read the config file, which contains {edirs} export directives.
+
+    Would you like to start Alibre Neutralizer's export process, following that configuration?
+    
+    THIS MAY DELETE FILES, if you've enabled the pre-export purge option on any of your export directives.
+    """.format(edirs=len(neutralizer.export_directives))
+    continue_choice = Windows().QuestionDialog(
+        continue_window_prompt,
+        window_name
+    )
+
+    # If the user said yes, go
+    if continue_choice == True:
+        neutralizer.export_all()
+        Windows().InfoDialog("The export process completed!", window_name)
+    else:
+        Windows().InfoDialog("The export operation was cancelled. No files were modified. Alibre Neutralizer will now close.", window_name)
+
+# Start main
+main()
 
