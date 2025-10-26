@@ -2,7 +2,7 @@
 <AlibreNeutralizerConfig>
     <!--The "Base" export path, relative to this config file's directory.
     This is essentially an "offset" for all the RelativeExportPath tags below.-->
-    <basePath>./Neutral-Files</basePath>
+    <BaseExportPath>./Neutral-Files</BaseExportPath>
     <ExportDirectiveList>
         <ExportDirective>
             <type>STEP203</type>
@@ -22,6 +22,7 @@
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./STLs/{Number}_{Name}.stl</RelativeExportPath>
+            <PurgeDirectoryBeforeExporting>./STLs</PurgeDirectoryBeforeExporting>
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>

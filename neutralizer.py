@@ -258,7 +258,8 @@ class AlibreNeutralizer:
         # This is used to interpret the "Base Path" from the config file, since it's specified RELATIVE to the config file's location.
         self.config_file_path = config_file_path
         # Get the base path from config
-        self.base_path = os.path.normpath(root.find('basePath').text)
+        base_path_elem = root.find('BaseExportPath')
+        self.base_path = os.path.normpath(base_path_elem.text) if base_path_elem is not None and base_path_elem.text is not None else os.path.normpath('.')
         
         # Parse export directives from config
         self.export_directives = []
