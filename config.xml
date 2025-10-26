@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AlibreNeutralizerConfig>
+    <basePath>../../../../</basePath>
+    <ExportDirectiveList>
+        <ExportDirective>
+            <type>STEP203</type>
+            <RelativeExportPath>./STEPs/{Number}_{Name}.stp</RelativeExportPath>
+            <purgeDirectory>./STEPs</purgeDirectory>
+        </ExportDirective>
+        <ExportDirective>
+            <type>STL</type>
+            <RelativeExportPath>./STLs/{Number}_{Name}.stl</RelativeExportPath>
+            <purgeDirectory>./STLs</purgeDirectory>
+        </ExportDirective>
+        <ExportDirective>
+            <type>STEP214</type>
+            <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stp</RelativeExportPath>
+            <purgeDirectory>./Combined</purgeDirectory>
+        </ExportDirective>
+        <ExportDirective>
+            <type>SAT</type>
+            <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.sat</RelativeExportPath>
+            <purgeDirectory>./Combined</purgeDirectory>
+        </ExportDirective>
+        <ExportDirective>
+            <type>STL</type>
+            <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stl</RelativeExportPath>
+            <purgeDirectory>./Combined</purgeDirectory>
+        </ExportDirective>
+    </ExportDirectiveList>
+</AlibreNeutralizerConfig>

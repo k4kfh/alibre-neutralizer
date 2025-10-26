@@ -4,6 +4,7 @@ from AlibreScript import *
 # real dependencies
 import os
 import re
+import xml.etree.ElementTree as ET
 
 class ExportTypes:
     """AlibreScript's IronPython interpreter doesn't have the Enum library available, so this was my best shot at fudging enum-ish behavior."""
@@ -229,6 +230,40 @@ class ExportDirective:
 
 class AlibreNeutralizer:
     """Create an instance of this, with an Alibre Assembly passed in, to handle the backend logic of recursively exporting files."""
+
+    @staticmethod
+    def create_from_config_file(component, config_file_path):
+        """Create an AlibreNeutralizer instance from an XML configuration file.
+        
+        :param component: The top-level assembly that you want to recursively export.
+        :type component: Assembly | AssembledSubAssembly
+        
+        :param config_file_path: Path to the XML configuration file
+        :type config_file_path: str
+        
+        :return: A configured AlibreNeutralizer instance
+        :rtype: AlibreNeutralizer
+        """
+        tree = ET.parse(config_file_path)
+        root = tree.getroot()
+        
+        base_path = root.find('basePath').text
+        export_directives = []
+        
+        for directive in root.find('ExportDirectiveList').findall('ExportDirective'):
+            export_type = getattr(ExportTypes, directive.find('type').text)
+            path_expression = directive.find('RelativeExportPath').text
+            purge_directory = directive.find('purgeDirectory').text if directive.find('purgeDirectory') is not None else None
+            
+            export_directives.append(
+                ExportDirective(
+                    export_type=export_type,
+                    export_rel_path_expression=path_expression,
+                    purge_directory_before_export=purge_directory
+                )
+            )
+        
+        return AlibreNeutralizer(component, base_path, export_directives)
 
     def __init__(self, component, base_path, export_directives = None):
         # type: (AlibreNeutralizer, Assembly | AssembledSubAssembly, str, list[ExportDirective] | None) -> None
@@ -472,19 +507,8 @@ class AlibreNeutralizer:
             )
         )
 
-foo = AlibreNeutralizer(
-    CurrentAssembly(),
-    "../../../../", # This is the directory where the AD_PKG file is stored
-    [
-        ExportDirective(ExportTypes.STEP203, "./STEPs/{Number}_{Name}.stp", "./STEPs"), # You can use relative paths, as long as all the folders exist already. Don't put a leading . or \\, just start the first relative folder name.
-        ExportDirective(ExportTypes.STL, "./STLs/{Number}_{Name}.stl", "./STLs"),
-
-        # Group by P/N, not file type
-        ExportDirective(ExportTypes.STEP214, "./Combined/{Supplier}/{Number}/{Name}.stp", "./Combined"),
-        ExportDirective(ExportTypes.SAT, "./Combined/{Supplier}/{Number}/{Name}.sat", "./Combined"),
-        ExportDirective(ExportTypes.STL, "./Combined/{Supplier}/{Number}/{Name}.stl", "./Combined")
-    ]
-)
+# Create an instance from the XML configuration
+foo = AlibreNeutralizer.create_from_config_file(CurrentAssembly(), "D:\Users\Hampton\Documents\Alibre Script Library\export-for-oshw\config.xml")
 
 # Test export path generation
 foo.export_all()
