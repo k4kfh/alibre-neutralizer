@@ -3,9 +3,38 @@
     <!--The "Base" export path, relative to this config file's directory.
     This is essentially an "offset" for all the RelativeExportPath tags below.-->
     <BaseExportPath>./Neutral-Files</BaseExportPath>
+
+    <!-- EXPORT DIRECTIVES
+    
+    Export Directives are like "jobs" or "rules" governing the export.
+    Each export directive defines the file type to be exported, which component types (parts/subassemblies/main assembly)
+    should be exported, and how the files should be organized and named.
+    -->
     <ExportDirectiveList>
         <ExportDirective>
+            <!-- SECTION 1 : EXPORT TYPE -->
+            <!--Select export file type. Options are:
+            - STEP203
+            - STEP214
+            - SAT
+            - STL
+            - IGES
+
+            You can only export one type per export directive.
+            If you want to export multiple types of files, make another export directive.
+            -->
             <type>STEP203</type>
+
+            <!-- SECTION 2 : EXPORT DIRECTORY/FILENAME CONVENTIONS -->
+            <!--Relative to BaseExportPath, define the output path/filenames of the files exported under this directive.
+            Use standard Python string formatting {Whatever} syntax, with the standard Alibre API properties, to set
+            file and folder names dynamically with Alibre properties.
+            
+            For example, to name your files in PARTNUMBER_DESCRIPTION format, you could put {Number}_{Name}.stp here.
+            
+            You can include additional folders in this path as well, which allows you to do things like group
+            exported files into folders by their Supplier property.
+            -->
             <RelativeExportPath>./STEPs/{Number}_{Name}.stp</RelativeExportPath>
             <!--Purge this path of the given export file type before exporting.
             This is a path relative to basePath.
@@ -15,18 +44,27 @@
             
             You can also disable this and purge nothing before your export by simply removing this tag.-->
             <PurgeDirectoryBeforeExporting>./STEPs</PurgeDirectoryBeforeExporting>
+
+            <!-- SECTION 3 : SKIP CERTAIN COMPONENT TYPES WHEN EXPORTING -->
+            <!--Set to false if you want this export directive to NOT export the root assembly
+            (this will not impact its constituent parts/subassemblies).-->
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
+            <!--Set to false if you want this export directive to NOT export any subassemblies
+            (this will not impact their constituent parts).-->
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <!--Set to false if you want this export directive to NOT export parts.-->
             <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
+
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./STLs/{Number}_{Name}.stl</RelativeExportPath>
             <PurgeDirectoryBeforeExporting>./STLs</PurgeDirectoryBeforeExporting>
-            <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
-            <EnableSubassemblyExport>true</EnableSubassemblyExport>
+            <EnableRootAssemblyExport>false</EnableRootAssemblyExport>
+            <EnableSubassemblyExport>false</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
+
         <ExportDirective>
             <type>STEP214</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stp</RelativeExportPath>
@@ -35,6 +73,7 @@
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
+
         <ExportDirective>
             <type>SAT</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.sat</RelativeExportPath>
@@ -43,6 +82,7 @@
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
+
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stl</RelativeExportPath>
@@ -51,5 +91,6 @@
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
         </ExportDirective>
+
     </ExportDirectiveList>
 </AlibreNeutralizerConfig>
