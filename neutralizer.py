@@ -265,7 +265,7 @@ class AlibreNeutralizer:
         for directive in root.find('ExportDirectiveList').findall('ExportDirective'):
             export_type = getattr(ExportTypes, directive.find('type').text)
             path_expression = directive.find('RelativeExportPath').text
-            purge_directory = directive.find('purgeDirectory').text if directive.find('purgeDirectory') is not None else None
+            purge_directory = directive.find('PurgeDirectoryBeforeExporting').text if directive.find('PurgeDirectoryBeforeExporting') is not None else None
 
             # Read boolean flags (default to True if the element is missing)
             def _bool_from_elem(elem, default=True):

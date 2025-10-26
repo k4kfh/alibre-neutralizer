@@ -7,7 +7,14 @@
         <ExportDirective>
             <type>STEP203</type>
             <RelativeExportPath>./STEPs/{Number}_{Name}.stp</RelativeExportPath>
-            <purgeDirectory>./STEPs</purgeDirectory>
+            <!--Purge this path of the given export file type before exporting.
+            This is a path relative to basePath.
+            It will NOT purge all files, just the exported types under this directive.
+            For example, if you set type to STEP203, it will purge .STP and .STEP files,
+            nothing else.
+            
+            You can also disable this and purge nothing before your export by simply removing this tag.-->
+            <PurgeDirectoryBeforeExporting>./STEPs</PurgeDirectoryBeforeExporting>
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
@@ -15,7 +22,6 @@
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./STLs/{Number}_{Name}.stl</RelativeExportPath>
-            <purgeDirectory>./STLs</purgeDirectory>
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
@@ -23,7 +29,7 @@
         <ExportDirective>
             <type>STEP214</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stp</RelativeExportPath>
-            <purgeDirectory>./Combined</purgeDirectory>
+            <PurgeDirectoryBeforeExporting>./Combined</PurgeDirectoryBeforeExporting>
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
@@ -31,7 +37,7 @@
         <ExportDirective>
             <type>SAT</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.sat</RelativeExportPath>
-            <purgeDirectory>./Combined</purgeDirectory>
+            <PurgeDirectoryBeforeExporting>./Combined</PurgeDirectoryBeforeExporting>
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
@@ -39,7 +45,7 @@
         <ExportDirective>
             <type>STL</type>
             <RelativeExportPath>./Combined/{Supplier}/{Number}/{Name}.stl</RelativeExportPath>
-            <purgeDirectory>./Combined</purgeDirectory>
+            <PurgeDirectoryBeforeExporting>./Combined</PurgeDirectoryBeforeExporting>
             <EnableRootAssemblyExport>true</EnableRootAssemblyExport>
             <EnableSubassemblyExport>true</EnableSubassemblyExport>
             <EnablePartExport>true</EnablePartExport>
