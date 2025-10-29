@@ -11,6 +11,7 @@ from AlibreScript import *
 import os
 import re
 import xml.etree.ElementTree as ET
+import csv
 
 class ExportTypes:
     """AlibreScript's IronPython interpreter doesn't have the Enum library available, so this was my best shot at fudging enum-ish behavior."""
@@ -19,6 +20,7 @@ class ExportTypes:
     SAT = 3
     STL = 4
     IGES = 5
+    CSV_Properties = 6
 
     # Static utility method
     @staticmethod
@@ -32,6 +34,8 @@ class ExportTypes:
             return [".stl"]
         elif (export_type == ExportTypes.IGES):
             return [".iges", ".igs"]
+        elif (export_type == ExportTypes.CSV_Properties):
+            return [".csv"]
         else:
             raise Exception("Invalid export type provided.")
     
@@ -48,6 +52,8 @@ class ExportTypes:
             return "STL"
         elif export_type == ExportTypes.IGES:
             return "IGES"
+        elif export_type == ExportTypes.CSV_Properties:
+            return "CSV of Component Properties"
 
 class ExportDirective:
     """Each instance of this directs AssemblyNeutralizer to export a particular type of file, with a particular relative path and filename.
@@ -237,7 +243,6 @@ class ExportDirective:
                 component_prettified_properties[key] = component_value
         
         return component_prettified_properties
-
 
     def get_extensions_to_purge(self):
         """Return the list of extensions which should be purged before a new export.
@@ -483,7 +488,10 @@ class AlibreNeutralizer:
                 component.ExportIGES(export_path_abs)
             elif export_type == ExportTypes.STL:
                 component.ExportSTL(export_path_abs)
-        except:
+            elif export_type == ExportTypes.CSV_Properties:
+                # Export to CSV
+                self._export_properties_to_csv(component, export_path_abs)
+        except Exception as e:
             print "ERROR: There was a problem exporting {0}.".format(component.FileName)
     
     def _convert_base_path_to_absolute(self):
@@ -517,6 +525,51 @@ class AlibreNeutralizer:
                 export_path_relative_sanitized
             )
         )
+
+    def _export_properties_to_csv(self, component, export_path_abs):
+        """Given a single Part or Assembly, export its Properties (Comment, Cost Center, Part Number, etc) to a CSV file at a specified path."""
+        # type: (AlibreNeutralizer, Part | Assembly, str) -> None
+
+        # If you don't put "wb" here, it puts an extra blank row between every row
+        with open(export_path_abs, 'wb') as csv_file:
+            writer = csv.writer(csv_file)
+
+            # File header
+            writer.writerow(["Property Name", "Value"])
+
+            # File contents
+            data = [
+                ["Comment", component.Comment],
+                ["CostCenter", component.CostCenter],
+                ["CreatedBy", component.CreatedBy],
+                ["CreatedDate", component.CreatedDate],
+                ["CreatingApplication", component.CreatingApplication],
+                ["Density", component.Density],
+                ["Description", component.Description],
+                ["DocumentNumber", component.DocumentNumber],
+                ["EngineeringApprovalDate", component.EngineeringApprovalDate],
+                ["EngineeringApprovedBy", component.EngineeringApprovedBy],
+                ["EstimatedCost", component.EstimatedCost],
+                # I am NOT including FileName, since it's an absolute file path
+                # I would not personally want an automated export script revealing details about the structure of my filesystem in a public-facing Git repo
+                ["Keywords", component.Keywords],
+                ["LastAuthor", component.LastAuthor],
+                ["LastUpdateDate", component.LastUpdateDate],
+                ["ManufacturingApprovedBy", component.ManufacturingApprovedBy],
+                ["ModifiedInformation", component.ModifiedInformation],
+                ["Name", component.Name],
+                ["Number", component.Number],
+                ["Product", component.Product],
+                ["ReceivedFrom", component.ReceivedFrom],
+                ["Revision", component.Revision],
+                ["StockSize", component.StockSize],
+                ["Supplier", component.Supplier],
+                ["Title", component.Title],
+                ["Vendor", component.Vendor],
+                ["WebLink", component.WebLink]
+            ]
+
+            writer.writerows(data)
 
 
 def main():
