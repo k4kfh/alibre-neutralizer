@@ -21,6 +21,7 @@ class ExportTypes:
     STL = 4
     IGES = 5
     CSV_Properties = 6
+    CSV_Parameters = 7
 
     # Static utility method
     @staticmethod
@@ -34,7 +35,7 @@ class ExportTypes:
             return [".stl"]
         elif (export_type == ExportTypes.IGES):
             return [".iges", ".igs"]
-        elif (export_type == ExportTypes.CSV_Properties):
+        elif (export_type == ExportTypes.CSV_Properties) or (export_type == ExportTypes.CSV_Parameters):
             return [".csv"]
         else:
             raise Exception("Invalid export type provided.")
@@ -54,6 +55,8 @@ class ExportTypes:
             return "IGES"
         elif export_type == ExportTypes.CSV_Properties:
             return "CSV of Component Properties"
+        elif export_type == ExportTypes.CSV_Parameters:
+            return "CSV of Component Parameters"
 
 class ExportDirective:
     """Each instance of this directs AssemblyNeutralizer to export a particular type of file, with a particular relative path and filename.
@@ -328,13 +331,17 @@ class AlibreNeutralizer:
         # Step 1: Purge old files, if applicable
         for edir in self.export_directives:
             self._purge_according_to_export_directive(edir)
+        
+        # Step 2 : Export the Root Assembly
+        # if none of the export directives call for this, this function won't do anything
+        self._export_root_assembly()
 
-        # Step 2: Export parts in root assembly, and add those parts to the exported_files list
+        # Step 3: Export parts in root assembly, and add those parts to the exported_files list
         processed_files = processed_files.union(
             self._export_parts(self.root_component, self.export_directives, processed_files)
         )
 
-        # Step 3: Export subassemblies in root assembly (recursive)
+        # Step 4: Export subassemblies in root assembly (recursive)
         # for subassy in subassemblies
         #   for edir in export_directives
         #     newly_exported_names = _export_subassembly_recursive(component, edir)
@@ -359,6 +366,24 @@ class AlibreNeutralizer:
                 already_processed_files = already_processed_files.union({part.FileName})
 
         return already_processed_files
+
+    def _export_root_assembly(self):
+        """If any of the Export Directives call for it, export the Root Assembly (``self.root_component``)."""
+        # type (AlibreNeutralizer)
+
+        for export_directive in self.export_directives:
+            if (export_directive.export_root_assembly == True):
+                # We need to export this root Assembly
+                print "- Exporting Root Assembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), self.root_component.Name)
+                abs_export_path = self._get_absolute_export_path(
+                    export_directive.get_export_path(self.root_component)
+                )
+                print "- Path : {0}".format(abs_export_path)
+                self._export(
+                    self.root_component,
+                    export_directive.export_type,
+                    abs_export_path
+                )
 
     def _export_subassemblies_recursive(self, subassembly, export_directives, already_processed_files):
         # type (AlibreNeutralizer, AssembledSubAssembly, list[ExportDirective], set[str]) -> set[str]
@@ -438,7 +463,7 @@ class AlibreNeutralizer:
                     export_directive.export_type,
                     abs_export_path
                 )
-            elif export_directive.export_subassemblies == True and isinstance(component, AssembledSubAssembly):
+            elif (export_directive.export_subassemblies == True) and isinstance(component, AssembledSubAssembly):
                 # We need to export this Subassembly
                 print "- Exporting Subassembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
                 abs_export_path = self._get_absolute_export_path(
@@ -450,18 +475,7 @@ class AlibreNeutralizer:
                     export_directive.export_type,
                     abs_export_path
                 )
-            elif export_directive.export_root_assembly == True and isinstance(component, Assembly):
-                # We need to export this root Assembly
-                print "- Exporting Root Assembly to {0}: {1}".format(ExportTypes.convert_to_string(export_directive.export_type), component.Name)
-                abs_export_path = self._get_absolute_export_path(
-                    export_directive.get_export_path(component)
-                )
-                print "- Path : {0}".format(abs_export_path)
-                self._export(
-                    component,
-                    export_directive.export_type,
-                    abs_export_path
-                )
+
 
         else:
             raise Exception("Invalid argument - expected an ExportDirective.")
@@ -489,10 +503,13 @@ class AlibreNeutralizer:
             elif export_type == ExportTypes.STL:
                 component.ExportSTL(export_path_abs)
             elif export_type == ExportTypes.CSV_Properties:
-                # Export to CSV
+                # Export Properties (metadata like Cost Center, Part Number, etc) to CSV
                 self._export_properties_to_csv(component, export_path_abs)
+            elif export_type == ExportTypes.CSV_Parameters:
+                # Export Parameters (dimensions, equations, etc) to CSV
+                self._export_parameters_to_csv(component, export_path_abs)
         except Exception as e:
-            print "ERROR: There was a problem exporting {0}.".format(component.FileName)
+            print "ERROR: There was a problem exporting {0} to {1} format.".format(component.FileName, ExportTypes.convert_to_string(export_type))
     
     def _convert_base_path_to_absolute(self):
         """Convert self.base_path to an absolute path, relative to the directory where the config file lives.
@@ -570,6 +587,22 @@ class AlibreNeutralizer:
             ]
 
             writer.writerows(data)
+    
+    def _export_parameters_to_csv(self, component, export_path_abs):
+        """Given a single Part or Assembly, export its Parameters to a CSV file at a specified path."""
+        # type: (AlibreNeutralizer, Part | Assembly, str) -> None
+        
+        # If you don't put "wb" here, it puts an extra blank row between every row
+        with open(export_path_abs, 'wb') as csv_file:
+            writer = csv.writer(csv_file)
+
+            # File header
+            # This roughly mirrors the "Equation Editor" table view in Alibre's GUI
+            writer.writerow(["Name", "Equation", "Value", "Units", "Type", "Comment"])
+
+            for param in component.Parameters:
+                writer.writerow([param.Name, param.Equation, param.Value, param.Units, param.Type, param.Comment])
+            
 
 
 def main():

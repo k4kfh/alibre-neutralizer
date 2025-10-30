@@ -20,6 +20,9 @@
             - STL
             - IGES
             - CSV_Properties : this one dumps all the Properties, like Comment, Cost Center, Stock Size, Supplier, etc to a CSV file.
+            - CSV_Parameters : this one dumps all the Parameters (the stuff you see in Equation Editor) to a CSV file.
+                                This allows you to share critical design dimensions with non-Alibre users, even if the
+                                dimensions aren't easy to measure from a neutral CAD file.
 
             You can only export one type per export directive.
             If you want to export multiple types of files, make another export directive.
