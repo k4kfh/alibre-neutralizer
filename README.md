@@ -27,14 +27,15 @@ In most cases, files should be exported at 3 levels:
 
 ### Current Features
 
-* [x] Recursively export a complete assembly, with all its constituent subassemblies and parts exported separately
-* [x] Export all common neutral file types: STEP, SAT, IGES, STL
-* [x] Organize exports parametrically - Alibre Properties like Part Number, Revision, etc can be used in filenames and folders. This unlocks _many_ use cases, like:
+* [x] **Recursively export a complete assembly,** with all its constituent subassemblies and parts exported separately
+* [x] **Export all common neutral file types: STEP, SAT, IGES, STL**
+* [x] **Organize exports parametrically - Alibre Properties like Part Number, Revision, etc can be used in filenames and folders.** This unlocks _many_ use cases, like:
   * Grouping exports into folders based on Alibre's "Supplier" property (or any other Alibre Property)
   * Naming files in ``PartNumber_PartDescription_Revision`` format
-* [x] Automatically clear "old" files from the export directory before a fresh export
-* [x] All export settings are stored in a configuration file, so the export is repeatable and the resulting file structure is consistent
-* [x] Export to multiple file types, under multiple different parametric folder/name schemes, in a single export operation
+* [x] **Automatically clear "old" files from the export directory** before a fresh export
+* [x] **All export settings are stored in a configuration file,** so the export is repeatable and the resulting file structure is consistent
+* [x] **Export to multiple file types, under multiple different parametric folder/name schemes, in a single export operation**
+* [x] **Export Alibre Properties and Design Parameters to a CSV "sidecar" file.** These files are _very_ easy to ``git diff`` and review with normal pull-request/code-review workflows, so you can use your existing tooling to review critical design data changes.
 
 ### Future Feature Goals
 
@@ -44,7 +45,6 @@ Contributions are welcome!
 * [ ] **Granular error logging at a configurable path.** It would be great if, on any errors, a log file was created in the Git repo where your files were being exported. This file could even be caught by a CI/CD system, to prevent releasing bad/incomplete data.
 * [ ] **Including and excluding certain components from the export process.** For example, if a particular subassembly is only purchaseable as a complete unit (not as separate subcomponents), then there is likely no reason to export its subcomponents to their own neutral files. The current software allows exclusions based on component type, but nothing more granular than that. It would be nice to be able to exclude based on Alibre Properties.
 * [ ] **Support for "Purging" Alibre Properties.** In many business contexts, you may be comfortable sharing design data, but _uncomfortable_ sharing the supplier/pricing metadata embedded in the CAD files. It would be nice if the config file allowed you to define how that data should be systematically purged, although this would probably require generating a fresh "copy" of all the native Alibre files, to avoid data loss in the "master" files.
-* [ ] **Export Alibre Properties and Design Parameters to a CSV "sidecar" file.** It would be nice to add another export "file type" that produces a CSV file containing all the properties and Design Parameters in each file. That would make even more information visible to folks who don't have Alibre licenses (and ease integration with business systems like ERP and e-commerce).
 * [ ] **Defining required "manual exports", such as BOMs/PDFs/DXFs, on a per-component basis.** Alibre Script cannot currently do anything with BOM files or drawing files, so a fully-automated "Export BOM to CSV" and "Export Drawing to PDF/DXF" is off the table. In fact, Alibre Script has no way to find out if a part/assembly even has an accompanying BOM or drawing - the only system that would have this information is the new Alibre PDM, which has no public-facing API at this point. With these limitations in mind, I think the best compromise would be to include "flags" in the configuration file that indicate which components "require" a BOM or a drawing (and perhaps which file types should be exported for those items). Then this export tool could remind the user to manually export these items, and a good CI/CD pipeline could ensure that when MCAD files are modified, these items get modified as well.
 
 ## Installation
