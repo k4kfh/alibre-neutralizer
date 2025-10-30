@@ -600,8 +600,20 @@ class AlibreNeutralizer:
             # This roughly mirrors the "Equation Editor" table view in Alibre's GUI
             writer.writerow(["Name", "Equation", "Value", "Units", "Type", "Comment"])
 
+            # First, get the data
+            # We don't know what order Alibre will return this data in
+            # For example, will D1 come before A19? or no?
+            parameter_data_unalphabetized = []
             for param in component.Parameters:
-                writer.writerow([param.Name, param.Equation, param.Value, param.Units, param.Type, param.Comment])
+                parameter_data_unalphabetized.append([param.Name, param.Equation, param.Value, param.Units, param.Type, param.Comment])
+            
+            # since we don't know the order, let's alphabetize it before writing
+            parameter_data_alphabetized = sorted(parameter_data_unalphabetized, key=lambda x: x[0])
+
+            # now write the consistent, alphabetized data
+            # having it organized like this makes it easy to Diff these CSV files
+            for row in parameter_data_alphabetized:
+                writer.writerow(row)
             
 
 
